@@ -1,8 +1,17 @@
-import { ActivityType, Client, Events, GatewayIntentBits } from "discord.js";
+import {
+  ActivityType,
+  Client,
+  Events,
+  GatewayIntentBits,
+  REST,
+  Routes,
+} from "discord.js";
 import { getLogger } from "log4js";
+import { eq, and, isNull, sql } from "drizzle-orm";
+import * as fs from "node:fs";
+import * as path from "node:path";
 import { db } from "./db";
 import { users, games } from "./schema";
-import { eq, and, isNull, sql } from "drizzle-orm";
 
 const logger = getLogger();
 logger.level = "info";
@@ -67,7 +76,7 @@ client.on(Events.PresenceUpdate, async (oldPresence, newPresence) => {
           isNull(games.end_time),
         ),
       );
-  } else if (oldGame && newGame && (oldGame.name !== newGame.name)) {
+  } else if (oldGame && newGame && oldGame.name !== newGame.name) {
     logger.info(
       `Game updated: ${oldGame.name} -> ${newGame.name} - ${user.tag}`,
     );
@@ -87,6 +96,46 @@ client.on(Events.PresenceUpdate, async (oldPresence, newPresence) => {
     });
   }
 });
+
+const commands = [];
+// Grab all the command folders from the commands directory you created earlier
+const foldersPath = path.join(__dirname, "commands");
+const commandFiles = fs.readdirSync(foldersPath);
+for (const file of commandFiles) {
+  const command = require(`./commands/${file}`);
+  console.log(command);
+  if ("data" in command && "execute" in command) {
+    commands.push(command.data.toJSON());
+  } else {
+    logger.warn(
+      `[WARNING] The command at ${file} is missing a required "data" or "execute" property.`,
+    );
+  }
+}
+
+const rest = new REST().setToken(process.env.DISCORD_TOKEN!);
+
+(async () => {
+  try {
+    logger.info(
+      `Started refreshing ${commands.length} application (/) commands.`,
+    );
+    // The put method is used to fully refresh all commands in the guild with the current set
+    const data = await rest.put(
+      Routes.applicationGuildCommands(
+        process.env.APP_ID!,
+        process.env.GUILD_ID!,
+      ),
+      { body: commands },
+    );
+    logger.info(
+      `Successfully reloaded ${(data as Array<string>).length} application (/) commands.`,
+    );
+  } catch (error) {
+    // And of course, make sure you catch and log any errors!
+    logger.error(error);
+  }
+})();
 
 const _server = Bun.serve({
   port: 3000,
