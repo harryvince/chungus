@@ -1,0 +1,22 @@
+{
+  "name": "chungus",
+  "module": "src/index.ts",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "bun run --watch src/index.ts"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.3.10",
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "dependencies": {
+    "discord.js": "^14.25.1",
+    "drizzle-kit": "^1.0.0-beta.6-4414a19",
+    "drizzle-orm": "^1.0.0-beta.6-4414a19",
+    "log4js": "^6.9.1"
+  }
+}
