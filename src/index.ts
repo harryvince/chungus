@@ -67,7 +67,7 @@ client.on(Events.PresenceUpdate, async (oldPresence, newPresence) => {
           isNull(games.end_time),
         ),
       );
-  } else if (oldGame && newGame) {
+  } else if (oldGame && newGame && (oldGame.name !== newGame.name)) {
     logger.info(
       `Game updated: ${oldGame.name} -> ${newGame.name} - ${user.tag}`,
     );
