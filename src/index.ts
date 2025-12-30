@@ -97,7 +97,8 @@ client.on(Events.PresenceUpdate, async (oldPresence, newPresence) => {
   }
 });
 
-const commands = [];
+const commands: Array<{ name: string; data: any; execute: any }> = [];
+const fullCommands: Array<{ name: string; data: any; execute: any }> = [];
 // Grab all the command folders from the commands directory you created earlier
 const foldersPath = path.join(__dirname, "commands");
 const commandFiles = fs.readdirSync(foldersPath);
@@ -105,6 +106,7 @@ for (const file of commandFiles) {
   const command = require(`./commands/${file}`);
   if ("data" in command && "execute" in command) {
     commands.push(command.data.toJSON());
+    fullCommands.push(command);
   } else {
     logger.warn(
       `[WARNING] The command at ${file} is missing a required "data" or "execute" property.`,
@@ -135,6 +137,25 @@ const rest = new REST().setToken(process.env.DISCORD_TOKEN!);
     logger.error(error);
   }
 })();
+
+client.on(Events.InteractionCreate, async (interaction) => {
+  if (!interaction.isCommand()) return;
+
+  const command = fullCommands.find(
+    (cmd) => cmd.data.name === interaction.commandName,
+  );
+  if (!command) return;
+
+  try {
+    await command.execute(interaction);
+  } catch (error) {
+    logger.error(error);
+    await interaction.reply({
+      content: "There was an error while executing this command!",
+      ephemeral: true,
+    });
+  }
+});
 
 const _server = Bun.serve({
   port: 3000,
