@@ -103,7 +103,6 @@ const foldersPath = path.join(__dirname, "commands");
 const commandFiles = fs.readdirSync(foldersPath);
 for (const file of commandFiles) {
   const command = require(`./commands/${file}`);
-  console.log(command);
   if ("data" in command && "execute" in command) {
     commands.push(command.data.toJSON());
   } else {
