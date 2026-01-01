@@ -36,7 +36,7 @@ export const data = new SlashCommandBuilder()
 const validateAccount = async (name: string, tagLine: string) => {
   const response = await ResultAsync.fromPromise(
     fetch(
-      `https://europe.api.riotgames.com/riot/account/v1/accounts/by-riot-id/${name}/${tagLine}`,
+      `https://europe.api.riotgames.com/riot/account/v1/accounts/by-riot-id/${encodeURIComponent(name)}/${encodeURIComponent(tagLine)}`,
       { headers: { "X-Riot-Token": process.env.RIOT_API_KEY! } },
     ),
     () => new Error("Failed to call Riot API for accounts"),
@@ -128,7 +128,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       content: isSelf
         ? `Registered your League account: **${gameName}#${tagLine}**`
         : `${targetUser.displayName} registered their League account: **${gameName}#${tagLine}**`,
-        flags: MessageFlags.Ephemeral,
+      flags: MessageFlags.Ephemeral,
     });
   }
 }
