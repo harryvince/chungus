@@ -25,3 +25,16 @@ export const games = sqliteTable("games", {
     .notNull()
     .default(sql`(current_timestamp)`),
 });
+
+export const leagueAccounts = sqliteTable("league_accounts", {
+  id: integer("id").primaryKey({ autoIncrement: true }).notNull(),
+  user_id: text("user_id")
+    .notNull()
+    .references(() => users.id),
+  game_name: text("game_name").notNull(),
+  tag_line: text("tag_line").notNull(),
+  puuid: text("puuid"),
+  created_at: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(current_timestamp)`),
+});
