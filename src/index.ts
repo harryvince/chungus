@@ -146,57 +146,57 @@ initializeMetrics().then(() => {
   registerSlashCommands(commands);
   startHttpServer();
 
-  schedule("0,30 * * * *", async () => {
-    logger.info("Refreshing league matches");
-    const accounts = await db.select().from(leagueAccounts);
-    accounts.forEach(async (account) => {
-      const response = await ResultAsync.fromPromise(
-        fetch(
-          `https://europe.api.riotgames.com/lol/match/v5/matches/by-puuid/${account.puuid}`,
-          { headers: { "X-Riot-Token": process.env.RIOT_API_KEY! } },
-        ),
-        () => new Error("Failed to call Riot API for matches"),
-      );
-      if (response.isErr()) {
-        logger.error(response.error);
-        return;
-      }
-      const responseJson = await ResultAsync.fromPromise(
-        response.value.json(),
-        () => new Error("Failed to marshal lol match response into json"),
-      );
-      if (responseJson.isErr()) {
-        logger.error(responseJson.error);
-        return;
-      }
-      (responseJson.value as Array<string>).forEach(async (id) => {
-        const matchDetails = await ResultAsync.fromPromise(
-          fetch(`https://europe.api.riotgames.com/lol/match/v5/matches/${id}`, {
-            headers: { "X-Riot-Token": process.env.RIOT_API_KEY! },
-          }),
-          () => new Error("Failed to call Riot API for match details"),
-        );
-        if (matchDetails.isErr()) {
-          logger.error(matchDetails.error);
-          return;
-        }
-        const matchDetailsJson = await ResultAsync.fromPromise(
-          matchDetails.value.json(),
-          () =>
-            new Error("Failed to marshal lol match details response into json"),
-        );
-        if (matchDetailsJson.isErr()) {
-          logger.error(matchDetailsJson.error);
-          return;
-        }
-        await db
-          .insert(leagueMatches)
-          .values({
-            id,
-            content: JSON.stringify(matchDetailsJson.value),
-          })
-          .onConflictDoNothing();
-      });
-    });
-  });
+  // schedule("0,30 * * * *", async () => {
+  //   logger.info("Refreshing league matches");
+  //   const accounts = await db.select().from(leagueAccounts);
+  //   accounts.forEach(async (account) => {
+  //     const response = await ResultAsync.fromPromise(
+  //       fetch(
+  //         `https://europe.api.riotgames.com/lol/match/v5/matches/by-puuid/${account.puuid}`,
+  //         { headers: { "X-Riot-Token": process.env.RIOT_API_KEY! } },
+  //       ),
+  //       () => new Error("Failed to call Riot API for matches"),
+  //     );
+  //     if (response.isErr()) {
+  //       logger.error(response.error);
+  //       return;
+  //     }
+  //     const responseJson = await ResultAsync.fromPromise(
+  //       response.value.json(),
+  //       () => new Error("Failed to marshal lol match response into json"),
+  //     );
+  //     if (responseJson.isErr()) {
+  //       logger.error(responseJson.error);
+  //       return;
+  //     }
+  //     (responseJson.value as Array<string>).forEach(async (id) => {
+  //       const matchDetails = await ResultAsync.fromPromise(
+  //         fetch(`https://europe.api.riotgames.com/lol/match/v5/matches/${id}`, {
+  //           headers: { "X-Riot-Token": process.env.RIOT_API_KEY! },
+  //         }),
+  //         () => new Error("Failed to call Riot API for match details"),
+  //       );
+  //       if (matchDetails.isErr()) {
+  //         logger.error(matchDetails.error);
+  //         return;
+  //       }
+  //       const matchDetailsJson = await ResultAsync.fromPromise(
+  //         matchDetails.value.json(),
+  //         () =>
+  //           new Error("Failed to marshal lol match details response into json"),
+  //       );
+  //       if (matchDetailsJson.isErr()) {
+  //         logger.error(matchDetailsJson.error);
+  //         return;
+  //       }
+  //       await db
+  //         .insert(leagueMatches)
+  //         .values({
+  //           id,
+  //           content: JSON.stringify(matchDetailsJson.value),
+  //         })
+  //         .onConflictDoNothing();
+  //     });
+  //   });
+  // });
 });
