@@ -13,7 +13,6 @@ WORKDIR /app
 COPY package.json bun.lock /app/
 RUN bun install --production --ignore-scripts --no-cache
 COPY src /app/src
-COPY drizzle /app/drizzle
 COPY drizzle.config.ts /app/
 
 ENV HEALTH_CHECK_PORT=3000
