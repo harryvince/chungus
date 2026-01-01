@@ -1,3 +1,5 @@
+import * as fs from "node:fs";
+import * as path from "node:path";
 import {
   ActivityType,
   Client,
@@ -6,12 +8,19 @@ import {
   REST,
   Routes,
 } from "discord.js";
+import { and, eq, isNull, sql } from "drizzle-orm";
 import { getLogger } from "log4js";
-import { eq, and, isNull, sql } from "drizzle-orm";
-import * as fs from "node:fs";
-import * as path from "node:path";
 import { db } from "./db";
-import { users, games } from "./schema";
+import {
+  activeGamePlayers,
+  commandsExecuted,
+  gamesEnded,
+  gamesStarted,
+  httpRequestDuration,
+  presenceUpdates,
+  register,
+} from "./metrics";
+import { games, users } from "./schema";
 
 const logger = getLogger();
 logger.level = "info";
@@ -31,16 +40,15 @@ client.once(Events.ClientReady, (c) => {
 client.login(process.env.DISCORD_TOKEN);
 
 client.on(Events.PresenceUpdate, async (oldPresence, newPresence) => {
+  presenceUpdates.inc();
+
   const user = newPresence.user;
   if (!user) {
     logger.error("User not found in presence update");
     return;
   }
 
-  const [dbUser] = await db
-    .select()
-    .from(users)
-    .where(eq(users.id, user.id));
+  const [dbUser] = await db.select().from(users).where(eq(users.id, user.id));
 
   if (!dbUser) {
     await db.insert(users).values({
@@ -52,9 +60,10 @@ client.on(Events.PresenceUpdate, async (oldPresence, newPresence) => {
   }
 
   if (dbUser?.display_name !== user.displayName) {
-    await db.update(users).set({ display_name: user.displayName }).where(
-      eq(users.id, user.id),
-    );
+    await db
+      .update(users)
+      .set({ display_name: user.displayName })
+      .where(eq(users.id, user.id));
   }
 
   const oldGame = oldPresence?.activities.find(
@@ -66,12 +75,16 @@ client.on(Events.PresenceUpdate, async (oldPresence, newPresence) => {
 
   if (!oldGame && newGame) {
     logger.info(`New game started: ${newGame.name} - ${user.tag}`);
+    gamesStarted.labels(newGame.name).inc();
+    activeGamePlayers.labels(newGame.name).inc();
     await db.insert(games).values({
       user_id: user.id,
       name: newGame.name,
     });
   } else if (oldGame && !newGame) {
     logger.info(`Game ended: ${oldGame.name} - ${user.tag}`);
+    gamesEnded.labels(oldGame.name).inc();
+    activeGamePlayers.labels(oldGame.name).dec();
     await db
       .update(games)
       .set({ end_time: sql`(current_timestamp)` })
@@ -86,6 +99,10 @@ client.on(Events.PresenceUpdate, async (oldPresence, newPresence) => {
     logger.info(
       `Game updated: ${oldGame.name} -> ${newGame.name} - ${user.tag}`,
     );
+    gamesEnded.labels(oldGame.name).inc();
+    gamesStarted.labels(newGame.name).inc();
+    activeGamePlayers.labels(oldGame.name).dec();
+    activeGamePlayers.labels(newGame.name).inc();
     await db
       .update(games)
       .set({ end_time: sql`(current_timestamp)` })
@@ -154,7 +171,9 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
   try {
     await command.execute(interaction);
+    commandsExecuted.labels(interaction.commandName, "success").inc();
   } catch (error) {
+    commandsExecuted.labels(interaction.commandName, "error").inc();
     logger.error(error);
     await interaction.reply({
       content: "There was an error while executing this command!",
@@ -165,7 +184,27 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
 const _server = Bun.serve({
   port: 3000,
-  fetch(request) {
-    return new Response("OK");
+  async fetch(request) {
+    const url = new URL(request.url);
+    const start = performance.now();
+
+    let response: Response;
+    if (url.pathname === "/metrics") {
+      const metrics = await register.metrics();
+      response = new Response(metrics, {
+        headers: { "Content-Type": register.contentType },
+      });
+    } else if (url.pathname === "/health") {
+      response = new Response("OK");
+    } else {
+      response = new Response("Not Found", { status: 404 });
+    }
+
+    const duration = (performance.now() - start) / 1000;
+    httpRequestDuration
+      .labels(request.method, url.pathname, response.status.toString())
+      .observe(duration);
+
+    return response;
   },
 });

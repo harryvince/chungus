@@ -17,6 +17,7 @@
     "discord.js": "^14.25.1",
     "drizzle-kit": "^1.0.0-beta.6-4414a19",
     "drizzle-orm": "^1.0.0-beta.6-4414a19",
-    "log4js": "^6.9.1"
+    "log4js": "^6.9.1",
+    "prom-client": "^15.1.3"
   }
 }
