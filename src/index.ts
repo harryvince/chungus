@@ -1,8 +1,11 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { Client, GatewayIntentBits, REST, Routes } from "discord.js";
+import { count, isNull } from "drizzle-orm";
 import { getLogger } from "log4js";
-import { httpRequestDuration, register } from "./metrics";
+import { db } from "./db";
+import { activeGamePlayers, httpRequestDuration, register } from "./metrics";
+import { games } from "./schema";
 import type { Command, Event, EventContext } from "./types";
 
 const logger = getLogger();
@@ -29,14 +32,20 @@ for (const event of events) {
   }
 }
 
-// Start the bot
-client.login(process.env.DISCORD_TOKEN);
+async function initializeMetrics() {
+  const activeSessions = await db
+    .select({ name: games.name, count: count() })
+    .from(games)
+    .where(isNull(games.end_time))
+    .groupBy(games.name);
 
-// Register slash commands with Discord
-registerSlashCommands(commands);
-
-// Start HTTP server for metrics and health checks
-startHttpServer();
+  for (const session of activeSessions) {
+    activeGamePlayers.labels(session.name).set(session.count);
+    logger.info(
+      `Initialized active players for ${session.name}: ${session.count}`,
+    );
+  }
+}
 
 function loadCommands(): Command[] {
   const commands: Command[] = [];
@@ -129,3 +138,9 @@ function startHttpServer() {
     },
   });
 }
+
+initializeMetrics().then(() => {
+  client.login(process.env.DISCORD_TOKEN);
+  registerSlashCommands(commands);
+  startHttpServer();
+});
