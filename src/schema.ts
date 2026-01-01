@@ -38,3 +38,11 @@ export const leagueAccounts = sqliteTable("league_accounts", {
     .notNull()
     .default(sql`(current_timestamp)`),
 });
+
+export const leagueMatches = sqliteTable("league_matches", {
+  id: text("id").primaryKey().notNull(),
+  content: text("content").notNull(),
+  created_at: integer("created_at", { mode: "timestamp" }).notNull().default(
+    sql`(current_timestamp)`,
+  ),
+});

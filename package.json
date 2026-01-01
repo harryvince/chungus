@@ -20,6 +20,7 @@
     "drizzle-orm": "^1.0.0-beta.8-734e789",
     "log4js": "^6.9.1",
     "neverthrow": "^8.2.0",
+    "node-cron": "^4.2.1",
     "prom-client": "^15.1.3"
   }
 }

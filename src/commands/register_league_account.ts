@@ -24,12 +24,19 @@ export const data = new SlashCommandBuilder()
       .setName("tag_line")
       .setDescription("Your Riot tag line, after the hash (e.g. EUW)")
       .setRequired(true),
+  )
+  .addUserOption((option) =>
+    option
+      .setName("user")
+      .setDescription("The user to register (defaults to yourself)")
+      .setRequired(false),
   );
 
 const validateAccount = async (name: string, tagLine: string) => {
   const response = await ResultAsync.fromPromise(
     fetch(
       `https://europe.api.riotgames.com/riot/account/v1/accounts/by-riot-id/${name}/${tagLine}`,
+      { headers: { "X-Riot-Token": process.env.RIOT_API_KEY! } },
     ),
     () => new Error("Failed to call Riot API for accounts"),
   );
@@ -58,7 +65,9 @@ const validateAccount = async (name: string, tagLine: string) => {
 export async function execute(interaction: ChatInputCommandInteraction) {
   const gameName = interaction.options.get("game_name", true).value as string;
   const tagLine = interaction.options.get("tag_line", true).value as string;
-  const userId = interaction.user.id;
+  const targetUser = interaction.options.getUser("user") ?? interaction.user;
+  const userId = targetUser.id;
+  const isSelf = targetUser.id === interaction.user.id;
 
   const [existingUser] = await db
     .select()
@@ -82,7 +91,8 @@ export async function execute(interaction: ChatInputCommandInteraction) {
   const account = await validateAccount(gameName, tagLine);
   if (!account.success || account.response === undefined) {
     await interaction.reply({
-      content: `Failed to validate your account: ${account.error}`,
+      content: isSelf ? `Failed to validate your account: ${account.error}`
+      : `${targetUser.displayName} failed to validate their account: ${account.error}`,
       ephemeral: true,
     });
     return;
@@ -99,7 +109,8 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       .where(eq(leagueAccounts.user_id, userId));
 
     await interaction.reply({
-      content: `Updated your League account to **${gameName}#${tagLine}**`,
+      content: isSelf ? `Updated your League account to **${gameName}#${tagLine}**`
+      : `${targetUser.displayName} updated their League account to **${gameName}#${tagLine}**`,
       ephemeral: true,
     });
   } else {
@@ -111,7 +122,8 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     });
 
     await interaction.reply({
-      content: `Registered your League account: **${gameName}#${tagLine}**`,
+      content: isSelf ? `Registered your League account: **${gameName}#${tagLine}**`
+      : `${targetUser.displayName} registered their League account: **${gameName}#${tagLine}**`,
       ephemeral: true,
     });
   }
