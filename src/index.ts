@@ -84,7 +84,12 @@ client.on(Events.PresenceUpdate, async (oldPresence, newPresence) => {
   } else if (oldGame && !newGame) {
     logger.info(`Game ended: ${oldGame.name} - ${user.tag}`);
     gamesEnded.labels(oldGame.name).inc();
-    activeGamePlayers.labels(oldGame.name).dec();
+    const gaugeData = await activeGamePlayers.get();
+    const currentValue =
+      gaugeData.values.find((v) => v.labels.game === oldGame.name)?.value ?? 0;
+    if (currentValue > 0) {
+      activeGamePlayers.labels(oldGame.name).dec();
+    }
     await db
       .update(games)
       .set({ end_time: sql`(current_timestamp)` })
@@ -101,7 +106,13 @@ client.on(Events.PresenceUpdate, async (oldPresence, newPresence) => {
     );
     gamesEnded.labels(oldGame.name).inc();
     gamesStarted.labels(newGame.name).inc();
-    activeGamePlayers.labels(oldGame.name).dec();
+    const gaugeDataForSwitch = await activeGamePlayers.get();
+    const currentValueForSwitch =
+      gaugeDataForSwitch.values.find((v) => v.labels.game === oldGame.name)
+        ?.value ?? 0;
+    if (currentValueForSwitch > 0) {
+      activeGamePlayers.labels(oldGame.name).dec();
+    }
     activeGamePlayers.labels(newGame.name).inc();
     await db
       .update(games)
