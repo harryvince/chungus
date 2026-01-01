@@ -38,7 +38,7 @@ client.on(Events.PresenceUpdate, async (oldPresence, newPresence) => {
   }
 
   const [dbUser] = await db
-    .select({ id: users.id })
+    .select()
     .from(users)
     .where(eq(users.id, user.id));
 
@@ -49,6 +49,12 @@ client.on(Events.PresenceUpdate, async (oldPresence, newPresence) => {
       display_name: user.displayName,
       avatar: user.avatarURL(),
     });
+  }
+
+  if (dbUser?.display_name !== user.displayName) {
+    await db.update(users).set({ display_name: user.displayName }).where(
+      eq(users.id, user.id),
+    );
   }
 
   const oldGame = oldPresence?.activities.find(

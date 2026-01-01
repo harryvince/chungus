@@ -1,18 +1,28 @@
-import type { CommandInteraction } from "discord.js";
-import { SlashCommandBuilder, EmbedBuilder } from "discord.js";
+import type { ChatInputCommandInteraction } from "discord.js";
+import { EmbedBuilder, SlashCommandBuilder } from "discord.js";
+import { and, eq, gte, isNotNull } from "drizzle-orm";
 import { db } from "../db";
 import { games } from "../schema";
-import { eq, gte, and, isNotNull } from "drizzle-orm";
 
 export const data = new SlashCommandBuilder()
   .setName("summary")
   .setDescription(
-    "Replies with a summary of your recent games for the last 24 hours.",
+    "Replies with a summary of recent games for the last 24 hours.",
+  )
+  .addUserOption((option) =>
+    option
+      .setName("user")
+      .setDescription(
+        "The user to check the summary for (defaults to yourself)",
+      )
+      .setRequired(false),
   );
 
-export async function execute(interaction: CommandInteraction) {
+export async function execute(interaction: ChatInputCommandInteraction) {
   try {
-    const userId = interaction.user.id;
+    const targetUser = interaction.options.getUser("user") ?? interaction.user;
+    const userId = targetUser.id;
+    const isSelf = targetUser.id === interaction.user.id;
     const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
     // Fetch all completed game sessions from the last 24 hours
@@ -29,7 +39,9 @@ export async function execute(interaction: CommandInteraction) {
 
     if (recentGames.length === 0) {
       await interaction.reply({
-        content: "You haven't played any games in the last 24 hours.",
+        content: isSelf
+          ? "You haven't played any games in the last 24 hours."
+          : `${targetUser.displayName} hasn't played any games in the last 24 hours.`,
         ephemeral: true,
       });
       return;
@@ -66,7 +78,9 @@ export async function execute(interaction: CommandInteraction) {
 
     // Build the embed
     const embed = new EmbedBuilder()
-      .setTitle("Last 24 Hours")
+      .setTitle(
+        isSelf ? "Last 24 Hours" : `${targetUser.displayName}'s Last 24 Hours`,
+      )
       .setColor(0x5865f2);
 
     const gameList = sortedGames
