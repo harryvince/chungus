@@ -1,4 +1,4 @@
-import { Events, type Interaction } from "discord.js";
+import { Events, MessageFlags, type Interaction } from "discord.js";
 import { getLogger } from "log4js";
 import { commandsExecuted } from "../metrics";
 import type { Command, Event, EventContext } from "../types";
@@ -30,7 +30,7 @@ function createExecute(commands: Command[]) {
       logger.error(error);
       await interaction.reply({
         content: "There was an error while executing this command!",
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral
       });
     }
   };

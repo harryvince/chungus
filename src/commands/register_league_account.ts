@@ -1,6 +1,7 @@
 import {
   type ChatInputCommandInteraction,
   SlashCommandBuilder,
+  MessageFlags,
 } from "discord.js";
 import { eq } from "drizzle-orm";
 import { ResultAsync } from "neverthrow";
@@ -91,9 +92,10 @@ export async function execute(interaction: ChatInputCommandInteraction) {
   const account = await validateAccount(gameName, tagLine);
   if (!account.success || account.response === undefined) {
     await interaction.reply({
-      content: isSelf ? `Failed to validate your account: ${account.error}`
-      : `${targetUser.displayName} failed to validate their account: ${account.error}`,
-      ephemeral: true,
+      content: isSelf
+        ? `Failed to validate your account: ${account.error}`
+        : `${targetUser.displayName} failed to validate their account: ${account.error}`,
+      flags: MessageFlags.Ephemeral,
     });
     return;
   }
@@ -109,9 +111,10 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       .where(eq(leagueAccounts.user_id, userId));
 
     await interaction.reply({
-      content: isSelf ? `Updated your League account to **${gameName}#${tagLine}**`
-      : `${targetUser.displayName} updated their League account to **${gameName}#${tagLine}**`,
-      ephemeral: true,
+      content: isSelf
+        ? `Updated your League account to **${gameName}#${tagLine}**`
+        : `${targetUser.displayName} updated their League account to **${gameName}#${tagLine}**`,
+      flags: MessageFlags.Ephemeral,
     });
   } else {
     await db.insert(leagueAccounts).values({
@@ -122,9 +125,10 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     });
 
     await interaction.reply({
-      content: isSelf ? `Registered your League account: **${gameName}#${tagLine}**`
-      : `${targetUser.displayName} registered their League account: **${gameName}#${tagLine}**`,
-      ephemeral: true,
+      content: isSelf
+        ? `Registered your League account: **${gameName}#${tagLine}**`
+        : `${targetUser.displayName} registered their League account: **${gameName}#${tagLine}**`,
+        flags: MessageFlags.Ephemeral,
     });
   }
 }

@@ -1,5 +1,5 @@
 import type { ChatInputCommandInteraction } from "discord.js";
-import { EmbedBuilder, SlashCommandBuilder } from "discord.js";
+import { EmbedBuilder, MessageFlags, SlashCommandBuilder } from "discord.js";
 import { and, eq, gte, isNotNull } from "drizzle-orm";
 import { db } from "../db";
 import { games } from "../schema";
@@ -42,7 +42,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         content: isSelf
           ? "You haven't played any games in the last 24 hours."
           : `${targetUser.displayName} hasn't played any games in the last 24 hours.`,
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
       return;
     }
@@ -95,7 +95,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     console.error(error);
     await interaction.reply({
       content: "An error occurred.",
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
     });
   }
 }
