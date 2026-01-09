@@ -1,6 +1,6 @@
 import type { ChatInputCommandInteraction } from "discord.js";
 import { EmbedBuilder, MessageFlags, SlashCommandBuilder } from "discord.js";
-import { and, eq, gte, isNotNull } from "drizzle-orm";
+import { and, eq, gte, isNotNull, sql } from "drizzle-orm";
 import { db } from "../db";
 import { games } from "../schema";
 
@@ -23,7 +23,11 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     const targetUser = interaction.options.getUser("user") ?? interaction.user;
     const userId = targetUser.id;
     const isSelf = targetUser.id === interaction.user.id;
-    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    // Convert 24 hours ago to SQLite timestamp format (YYYY-MM-DD HH:MM:SS)
+    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000)
+      .toISOString()
+      .slice(0, 19)
+      .replace("T", " ");
 
     // Fetch all completed game sessions from the last 24 hours
     const recentGames = await db
@@ -32,7 +36,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       .where(
         and(
           eq(games.user_id, userId),
-          gte(games.created_at, twentyFourHoursAgo),
+          gte(sql`CAST(${games.created_at} AS TEXT)`, twentyFourHoursAgo),
           isNotNull(games.end_time),
         ),
       );
