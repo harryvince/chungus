@@ -32,7 +32,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       .where(
         and(
           eq(games.user_id, userId),
-          gte(games.start_time, twentyFourHoursAgo),
+          gte(games.created_at, twentyFourHoursAgo),
           isNotNull(games.end_time),
         ),
       );
